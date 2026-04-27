@@ -5,3 +5,6 @@ docker exec -it kafka kafka-topics --create --topic clickstream --bootstrap-serv
 docker exec -it kafka-1 kafka-topics --list --bootstrap-server localhost:9092
 <!-- Run Producer -->
 python producer.py
+
+
+spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.13:4.1.1 --conf spark.pyspark.python=python spark_stream.py
