@@ -63,8 +63,10 @@ services:
     environment:
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+      _PIP_ADDITIONAL_REQUIREMENTS: pandas pyarrow
     volumes:
       - ./dags:/opt/airflow/dags
+      - ./output:/opt/airflow/output
     command: webserver
 
   airflow-scheduler:
@@ -79,6 +81,8 @@ services:
     environment:
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+      _PIP_ADDITIONAL_REQUIREMENTS: pandas pyarrow
     volumes:
       - ./dags:/opt/airflow/dags
+      - ./output:/opt/airflow/output
     command: scheduler
