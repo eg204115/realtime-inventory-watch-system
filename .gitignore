@@ -1,2 +1,5 @@
 # Spark checkpoint directory
 checkpoint/
+output/
+dags/__pycache__/ecommerce_dag.cpython-312.pyc
+dags/__pycache__/ecommerce-app.cpython-312.pyc
