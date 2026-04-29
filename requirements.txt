@@ -1,2 +1,5 @@
 kafka-python
 pyspark
+pyarrow
+pandas
+apache-airflow
