@@ -8,3 +8,8 @@ python producer.py
 
 
 spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.13:4.1.1 --conf spark.pyspark.python=python spark_stream.py
+
+<!-- Run Dashboard -->
+docker compose up -d dashboard
+<!-- Open -->
+http://localhost:8501
