@@ -3,3 +3,5 @@ pyspark
 pyarrow
 pandas
 apache-airflow
+streamlit
+fastparquet

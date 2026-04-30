@@ -86,3 +86,18 @@ services:
       - ./dags:/opt/airflow/dags
       - ./output:/opt/airflow/output
     command: scheduler
+
+  dashboard:
+    image: python:3.11-slim
+    container_name: inventory-dashboard
+    working_dir: /app
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./dashboard:/app/dashboard
+      - ./output:/app/output
+    command: >
+      bash -c "
+      pip install --no-cache-dir streamlit pandas pyarrow &&
+      streamlit run dashboard/app.py --server.address=0.0.0.0 --server.port=8501
+      "
