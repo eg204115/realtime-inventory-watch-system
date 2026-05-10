@@ -4,3 +4,4 @@ output/
 dags/__pycache__/ecommerce_dag.cpython-312.pyc
 dags/__pycache__/ecommerce-app.cpython-312.pyc
 dashboard/__pycache__/app.cpython-313.pyc
+airflow/dags/__pycache__/daily_clickstream_report_dag.cpython-312.pyc
