@@ -1,7 +1,2 @@
-kafka-python
-pyspark
-pyarrow
-pandas
-apache-airflow
-streamlit
-fastparquet
+Faker==40.15.0
+kafka-python==2.3.1
