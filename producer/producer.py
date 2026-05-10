@@ -1,161 +1,160 @@
 import json
 import random
+import signal
+import sys
 import time
-import logging
 from datetime import datetime
 
-from kafka import KafkaProducer
 from faker import Faker
+from kafka import KafkaProducer
 
-# -----------------------------------------
-# Logging Configuration
-# -----------------------------------------
+# ---------------------------------------------------
+# CONFIGURATION
+# ---------------------------------------------------
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s | %(levelname)s | %(message)s"
-)
-
-logger = logging.getLogger("clickstream-producer")
-
-# -----------------------------------------
-# Kafka Configuration
-# -----------------------------------------
-
-KAFKA_BROKER = "localhost:9092"
+KAFKA_BROKER = "localhost:29092"
 TOPIC_NAME = "clickstream-events"
 
-# -----------------------------------------
-# Initialize Faker
-# -----------------------------------------
+EVENT_TYPES = ["view", "add_to_cart", "purchase"]
+
+# Weighted behavior
+EVENT_WEIGHTS = [0.75, 0.20, 0.05]
+
+PRODUCT_IDS = [
+    "iphone_18",
+    "samsung_s24",
+    "airpods_pro",
+    "gaming_mouse",
+    "mechanical_keyboard",
+    "macbook_air_m3",
+    "ipad_pro",
+    "smart_watch",
+    "monitor_4k",
+    "gaming_laptop"
+]
+
+# Products that will intentionally get
+# many views but very low purchases
+HIGH_INTEREST_PRODUCTS = [
+    "iphone_18",
+    "gaming_laptop"
+]
 
 fake = Faker()
 
-# -----------------------------------------
-# Create Kafka Producer
-# -----------------------------------------
+running = True
+
+# ---------------------------------------------------
+# GRACEFUL SHUTDOWN
+# ---------------------------------------------------
+
+def shutdown_handler(sig, frame):
+    global running
+    print("\n🛑 Stopping producer gracefully...")
+    running = False
+
+signal.signal(signal.SIGINT, shutdown_handler)
+
+# ---------------------------------------------------
+# KAFKA PRODUCER
+# ---------------------------------------------------
 
 producer = KafkaProducer(
     bootstrap_servers=KAFKA_BROKER,
-    value_serializer=lambda v: json.dumps(v).encode("utf-8")
+    value_serializer=lambda v: json.dumps(v).encode("utf-8"),
+    linger_ms=10,
+    acks="all"
 )
 
-# -----------------------------------------
-# Sample Product Catalog
-# -----------------------------------------
+# ---------------------------------------------------
+# EVENT GENERATION
+# ---------------------------------------------------
 
-PRODUCTS = [
-    {"product_id": "P1001", "category": "Smartphones"},
-    {"product_id": "P1002", "category": "Laptops"},
-    {"product_id": "P1003", "category": "Headphones"},
-    {"product_id": "P1004", "category": "Gaming"},
-    {"product_id": "P1005", "category": "Smartwatches"},
-    {"product_id": "P1006", "category": "Tablets"},
-    {"product_id": "P1007", "category": "Accessories"},
-]
-
-# -----------------------------------------
-# Event Types with Realistic Probabilities
-# -----------------------------------------
-
-EVENT_TYPES = [
-    ("view", 75),
-    ("add_to_cart", 20),
-    ("purchase", 5)
-]
-
-# -----------------------------------------
-# Function to Generate Event Type
-# -----------------------------------------
-
-def generate_event_type():
-    events = [e[0] for e in EVENT_TYPES]
-    weights = [e[1] for e in EVENT_TYPES]
-
-    return random.choices(events, weights=weights, k=1)[0]
-
-# -----------------------------------------
-# Controlled Flash Sale Trigger Logic
-# -----------------------------------------
-
-HOT_PRODUCTS = ["P1001", "P1002"]
-
-def generate_product():
+def generate_event():
     """
-    Occasionally generate heavy traffic
-    on selected products to trigger
-    high-interest low-conversion alerts.
+    Generate realistic ecommerce clickstream event.
     """
 
-    # 40% chance to use hot products
-    if random.random() < 0.4:
-        return random.choice(
-            [p for p in PRODUCTS if p["product_id"] in HOT_PRODUCTS]
-        )
+    product_id = random.choice(PRODUCT_IDS)
 
-    return random.choice(PRODUCTS)
+    # ---------------------------------------------------
+    # Controlled low-conversion behavior
+    # ---------------------------------------------------
 
-# -----------------------------------------
-# Generate Clickstream Event
-# -----------------------------------------
-
-def generate_clickstream_event():
-
-    product = generate_product()
-
-    event_type = generate_event_type()
-
-    # Reduce purchases for hot products
-    # to simulate low conversion
-    if product["product_id"] in HOT_PRODUCTS:
-        if random.random() < 0.85:
-            event_type = "view"
+    if product_id in HIGH_INTEREST_PRODUCTS:
+        event_type = random.choices(
+            ["view", "add_to_cart", "purchase"],
+            weights=[0.90, 0.08, 0.02],
+            k=1
+        )[0]
+    else:
+        event_type = random.choices(
+            EVENT_TYPES,
+            weights=EVENT_WEIGHTS,
+            k=1
+        )[0]
 
     event = {
-        "user_id": f"U{random.randint(1000, 9999)}",
-        "product_id": product["product_id"],
-        "category": product["category"],
+        "user_id": f"user_{random.randint(1000, 9999)}",
+        "product_id": product_id,
         "event_type": event_type,
-        "timestamp": datetime.utcnow().isoformat()
+        "timestamp": datetime.utcnow().isoformat(),
+        "session_id": fake.uuid4(),
+        "device_type": random.choice(
+            ["mobile", "desktop", "tablet"]
+        ),
+        "location": random.choice(
+            ["Sri Lanka", "India", "Singapore", "UAE"]
+        )
     }
 
     return event
 
-# -----------------------------------------
-# Main Producer Loop
-# -----------------------------------------
+# ---------------------------------------------------
+# MAIN LOOP
+# ---------------------------------------------------
 
-def start_streaming():
+def main():
 
-    logger.info("Starting Clickstream Producer...")
+    print("=" * 60)
+    print("🚀 Ecommerce Clickstream Producer Started")
+    print(f"📡 Kafka Broker : {KAFKA_BROKER}")
+    print(f"📌 Topic         : {TOPIC_NAME}")
+    print("=" * 60)
 
-    try:
+    message_count = 0
 
-        while True:
+    while running:
 
-            event = generate_clickstream_event()
+        try:
+            event = generate_event()
 
             producer.send(TOPIC_NAME, value=event)
 
-            logger.info(f"Produced Event: {event}")
+            message_count += 1
 
-            # Random delay for realistic stream
+            print(
+                f"[{message_count}] "
+                f"{event['event_type'].upper():12} | "
+                f"Product: {event['product_id']:20} | "
+                f"User: {event['user_id']}"
+            )
+
+            # Simulate streaming behavior
             time.sleep(random.uniform(0.2, 1.0))
 
-    except KeyboardInterrupt:
+        except Exception as e:
+            print(f"❌ Error sending event: {e}")
 
-        logger.warning("Producer stopped manually.")
+    producer.flush()
+    producer.close()
 
-    finally:
+    print("✅ Producer stopped successfully")
 
-        producer.flush()
-        producer.close()
 
-        logger.info("Kafka producer connection closed.")
-
-# -----------------------------------------
-# Run Producer
-# -----------------------------------------
+# ---------------------------------------------------
+# ENTRY POINT
+# ---------------------------------------------------
 
 if __name__ == "__main__":
-    start_streaming()
+    main()
